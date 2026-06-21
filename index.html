@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Web IPTV Premium - Ultimate Mobile</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@latest/dist/mpegts.min.js"></script>
+    <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
+
+    <style>
+        :root {
+            --glass-bg: rgba(15, 23, 42, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #0ea5e9;
+            --accent-hover: #0284c7;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Nunito', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { width: 100vw; height: 100vh; background: #000; overflow: hidden; color: var(--text-main); cursor: default; }
+        
+        body.ui-hidden { cursor: none; }
+        body.ui-hidden #menu-toggle,
+        body.ui-hidden #media-controls,
+        body.ui-hidden #player-controls { opacity: 0 !important; pointer-events: none !important; transform: translateY(20px) scale(0.95); }
+        body.ui-hidden #menu-toggle { transform: translateY(-20px) scale(0.95); }
+        body.ui-hidden #media-controls { transform: translateY(-20px) scale(0.95); }
+
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+
+        #video-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; background: #000; }
+        video { width: 100%; height: 100%; object-fit: contain; outline: none; transition: filter 0.3s ease; } 
+        
+        video::cue { background: rgba(0, 0, 0, 0.75); color: #fff; font-family: 'Nunito', sans-serif; font-size: 4vmin; text-shadow: 2px 2px 4px #000; font-weight: 800; border-radius: 8px; padding: 4px 12px; }
+
+        .vignette { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, rgba(0,0,0,0) 40%, rgba(0,0,0,0.8) 100%); z-index: 2; pointer-events: none; transition: opacity 0.4s; opacity: 1; }
+        body.ui-hidden .vignette { opacity: 0; }
+
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; transition: opacity 0.3s; }
+
+        /* Top Menu Button */
+        #menu-toggle { position: absolute; top: 25px; left: 25px; pointer-events: auto; background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: white; border: 1px solid var(--glass-border); border-radius: 16px; width: 50px; height: 50px; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 10px 25px rgba(0,0,0,0.3); z-index: 50; }
+        #menu-toggle:hover { background: rgba(255,255,255,0.15); transform: scale(1.05); }
+
+        /* Top Right Controls */
+        #media-controls { position: absolute; top: 25px; right: 25px; pointer-events: auto; display: flex; gap: 12px; z-index: 50; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .control-box { display: none; background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 8px 16px; border-radius: 16px; align-items: center; border: 1px solid var(--glass-border); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        .control-box label { font-size: 13px; margin-right: 8px; font-weight: 800; opacity: 0.8; }
+        .control-box select { background: transparent; color: white; border: none; outline: none; font-size: 13px; font-weight: 800; cursor: pointer; appearance: none; -webkit-appearance: none; padding-right: 5px; }
+        .control-box select option { background: #1e293b; color: white; }
+        
+        .btn-icon { display: flex; background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); width: 50px; height: 50px; border-radius: 16px; align-items: center; justify-content: center; border: 1px solid var(--glass-border); color: white; cursor: pointer; font-size: 18px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .btn-icon:hover { background: rgba(255,255,255,0.15); transform: scale(1.05); }
+
+        /* Bottom Player Controls */
+        #player-controls { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(0); pointer-events: auto; display: flex; gap: 15px; background: var(--glass-bg); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); padding: 12px 30px; border-radius: 30px; border: 1px solid var(--glass-border); box-shadow: 0 20px 40px rgba(0,0,0,0.5); z-index: 50; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); align-items: center; opacity: 1; }
+        
+        .ctrl-btn { background: transparent; color: white; border: none; font-size: 20px; cursor: pointer; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .ctrl-btn:hover { background: rgba(255,255,255,0.1); color: var(--accent); }
+        .ctrl-btn:active { transform: scale(0.9); }
+        .ctrl-btn.play-btn { font-size: 24px; background: var(--accent); width: 65px; height: 65px; box-shadow: 0 10px 25px rgba(14, 165, 233, 0.4); margin: 0 10px; }
+        .ctrl-btn.play-btn:hover { background: var(--accent-hover); color: white; transform: scale(1.05); }
+
+        #osd-overlay { position: absolute; top: 35px; left: 50%; transform: translateX(-50%); background: rgba(14, 165, 233, 0.95); backdrop-filter: blur(20px); color: white; padding: 14px 35px; border-radius: 20px; font-size: 15px; font-weight: 800; display: none; pointer-events: none; box-shadow: 0 15px 35px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); z-index: 60; text-align: center; white-space: nowrap; max-width: 90%; overflow: hidden; text-overflow: ellipsis; }
+        #osd-overlay.error { background: rgba(220, 38, 38, 0.95); }
+
+        #gesture-indicator { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: white; padding: 20px 35px; border-radius: 24px; display: flex; flex-direction: column; align-items: center; gap: 12px; pointer-events: none; z-index: 70; opacity: 0; transition: opacity 0.2s; border: 1px solid var(--glass-border); box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+        #gesture-indicator.show { opacity: 1; }
+        #gesture-icon { font-size: 28px; }
+        .gesture-bar-bg { width: 8px; height: 100px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: flex-end; overflow: hidden; }
+        #gesture-fill { width: 100%; height: 50%; background: var(--accent); border-radius: 10px; transition: height 0.1s; }
+        #gesture-text { font-size: 16px; font-weight: 900; }
+
+        /* Sidebar Desktop Default */
+        #sidebar { position: absolute; top: 0; left: 0; width: 420px; height: 100%; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border-right: 1px solid var(--glass-border); pointer-events: auto; display: flex; flex-direction: column; transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1); z-index: 80; box-shadow: 20px 0 50px rgba(0,0,0,0.7); }
+        #sidebar.hidden { transform: translateX(-105%); }
+
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; padding: 30px 25px 15px 25px; border-bottom: 1px solid var(--glass-border); position: relative; }
+        .sidebar-header h2 { font-size: 20px; font-weight: 900; color: white; letter-spacing: 0.5px; }
+        .btn-close-sidebar { background: rgba(255,255,255,0.1); border: none; color: white; width: 40px; height: 40px; border-radius: 14px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .btn-close-sidebar:hover { background: #ef4444; }
+
+        #sidebar-tabs { display: flex; padding: 6px; margin: 20px 25px 10px 25px; background: rgba(0,0,0,0.4); border-radius: 18px; border: 1px solid var(--glass-border); }
+        .tab-btn { flex: 1; padding: 14px; font-size: 14px; font-weight: 800; background: transparent; color: var(--text-muted); border: none; border-radius: 14px; cursor: pointer; transition: 0.3s; }
+        .tab-btn.active { background: var(--accent); color: white; box-shadow: 0 5px 20px rgba(14, 165, 233, 0.4); }
+
+        .sidebar-slide { flex: 1; display: none; flex-direction: column; overflow: hidden; }
+        .sidebar-slide.active { display: flex; }
+
+        #playlist { flex: 1; overflow-y: auto; padding: 10px 25px 25px 25px; scroll-behavior: smooth; }
+        details { margin-bottom: 12px; background: rgba(255,255,255,0.02); border-radius: 18px; overflow: hidden; transition: 0.3s; border: 1px solid transparent; }
+        details[open] { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.08); }
+        summary { padding: 16px 20px; font-weight: 800; font-size: 15px; cursor: pointer; color: white; list-style: none; display: flex; justify-content: space-between; align-items: center; user-select: none; }
+        summary::-webkit-details-marker { display: none; }
+        
+        .channel-btn { width: 100%; padding: 12px 20px; text-align: left; background: transparent; border: none; color: var(--text-muted); cursor: pointer; transition: 0.2s; font-size: 14px; display: flex; align-items: center; gap: 15px; font-weight: 700; margin-bottom: 4px; }
+        .channel-btn:hover { background: rgba(255,255,255,0.06); color: white; border-radius: 14px; }
+        .channel-btn.active-channel { background: var(--accent); color: white; border-radius: 14px; box-shadow: 0 5px 20px rgba(14, 165, 233, 0.4); }
+        
+        .channel-logo { width: 42px; height: 42px; object-fit: contain; background: rgba(255,255,255,0.95); border-radius: 12px; padding: 4px; flex-shrink: 0; }
+        .no-logo { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); border-radius: 12px; font-size: 12px; color: white; flex-shrink: 0; font-weight: 800; border: 1px solid rgba(255,255,255,0.05); }
+        .channel-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 5px; }
+
+        .signal-track { width: 50px; height: 6px; background: rgba(0,0,0,0.5); border-radius: 10px; overflow: hidden; margin-left: auto; display: flex; }
+        .signal-fill { height: 100%; border-radius: 10px; transition: width 0.6s ease; }
+        .fill-100 { background: #22c55e; box-shadow: 0 0 5px #22c55e; }
+        .fill-80  { background: #84cc16; }
+        .fill-60  { background: #eab308; }
+        .fill-40  { background: #f97316; }
+        .fill-20  { background: #ef4444; }
+
+        .status-badge { font-size: 10px; font-weight: 900; padding: 5px 12px; border-radius: 12px; margin-left: auto; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-pending { background: rgba(255,255,255,0.1); color: var(--text-muted); }
+        .badge-check { background: rgba(217, 119, 6, 0.8); color: #fff; }
+        .badge-error { background: rgba(220, 38, 38, 0.8); color: #fff; }
+
+        #check-status-bar { padding: 15px 25px; background: rgba(0,0,0,0.5); font-size: 13px; color: var(--text-muted); display: none; justify-content: space-between; align-items: center; border-top: 1px solid var(--glass-border); font-weight: 700; backdrop-filter: blur(10px); }
+        .progress-text { color: var(--accent); font-weight: 900; }
+
+        #admin-panel { padding: 0 25px 25px 25px; overflow-y: auto; }
+        .admin-section { margin-bottom: 20px; background: rgba(255,255,255,0.03); padding: 22px; border-radius: 20px; border: 1px solid var(--glass-border); }
+        .admin-section label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        input[type="file"], input[type="text"], input[type="password"] { width: 100%; padding: 15px 18px; font-size: 14px; background: rgba(0,0,0,0.4); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; margin-bottom: 0; outline: none; transition: 0.2s; font-weight: 600; }
+        input[type="text"]:focus, input[type="password"]:focus { border-color: var(--accent); box-shadow: 0 0 12px rgba(56, 189, 248, 0.4); background: rgba(0,0,0,0.6); }
+        
+        button.btn-action { width: 100%; padding: 15px 18px; font-size: 14px; font-weight: 800; background: var(--accent); color: white; border: none; border-radius: 14px; cursor: pointer; transition: 0.2s; text-transform: uppercase; letter-spacing: 0.5px; }
+        button.btn-action:hover { background: var(--accent-hover); transform: translateY(-2px); box-shadow: 0 10px 20px rgba(14, 165, 233, 0.4); }
+
+        .url-slot-container { display: flex; align-items: center; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; margin-bottom: 12px; transition: 0.2s; padding-right: 6px; }
+        .url-slot-container:focus-within { border-color: var(--accent); box-shadow: 0 0 12px rgba(56, 189, 248, 0.4); background: rgba(0,0,0,0.6); }
+        .url-slot-container input { flex: 1; border: none; background: transparent; padding: 15px 18px; margin-bottom: 0; box-shadow: none !important; }
+        .btn-slot { width: auto; padding: 10px 18px; font-size: 12px; font-weight: 800; background: rgba(255,255,255,0.1); color: var(--text-muted); border: none; border-radius: 10px; cursor: pointer; transition: 0.2s; text-transform: uppercase; letter-spacing: 0.5px; margin: 0; }
+        .btn-slot:hover { background: var(--accent); color: white; }
+
+        /* ==========================================
+           MOBILE FIRST RESPONSIVE DESIGN (BOTTOM SHEET)
+           ========================================== */
+        @media (max-width: 768px) {
+            #menu-toggle { top: 15px; left: 15px; width: 44px; height: 44px; border-radius: 14px; font-size: 20px; }
+            
+            /* Media Controls di atas kanan */
+            #media-controls { top: 15px; right: 15px; gap: 8px; flex-wrap: wrap; justify-content: flex-end; width: calc(100% - 80px); }
+            .control-box { padding: 8px 12px; border-radius: 12px; }
+            .control-box label { display: none; }
+            .control-box select { font-size: 12px; }
+            .btn-icon { width: 44px; height: 44px; font-size: 16px; border-radius: 14px; }
+            
+            /* Player Controls mengambang di bawah */
+            #player-controls { bottom: 25px; padding: 10px 20px; gap: 10px; width: 92%; justify-content: space-between; border-radius: 24px; }
+            .ctrl-btn { width: 40px; height: 40px; font-size: 18px; }
+            .ctrl-btn.play-btn { width: 55px; height: 55px; font-size: 24px; margin: 0; }
+
+            /* MENGUBAH SIDEBAR MENJADI BOTTOM SHEET UNTUK HP */
+            #sidebar { 
+                top: auto; 
+                bottom: 0; 
+                left: 0; 
+                width: 100%; 
+                height: 82vh; 
+                border-right: none; 
+                border-radius: 28px 28px 0 0; 
+                transform: translateY(105%); 
+                box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
+            }
+            #sidebar:not(.hidden) {
+                transform: translateY(0);
+            }
+            
+            /* Visual Drag Handle di Bottom Sheet */
+            .sidebar-header::before {
+                content: '';
+                position: absolute;
+                top: 10px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 45px;
+                height: 5px;
+                background: rgba(255,255,255,0.3);
+                border-radius: 5px;
+            }
+            .sidebar-header { padding: 35px 20px 15px 20px; } 
+            
+            #sidebar-tabs { margin: 15px 20px 10px 20px; }
+            #playlist { padding: 10px 20px 20px 20px; }
+            #admin-panel { padding: 0 20px 20px 20px; }
+
+            .url-slot-container { flex-wrap: wrap; padding: 6px; border-radius: 16px; }
+            .url-slot-container input { width: 100%; padding: 12px; margin-bottom: 6px; }
+            .btn-slot { width: 100%; padding: 12px; border-radius: 12px; }
+
+            video::cue { font-size: 5vmin; }
+        }
+
+        /* Kelas helper saat landscape dipaksa */
+        body.is-landscape #player-controls { bottom: 15px; transform: translateX(-50%) scale(0.9); }
+        body.is-landscape #menu-toggle, body.is-landscape #media-controls { top: 15px; }
+    </style>
+</head>
+<body>
+
+    <div id="video-layer">
+        <video id="video" playsinline crossorigin="anonymous"></video>
+    </div>
+
+    <div id="ui-layer">
+        <div class="vignette" id="vignette-effect"></div>
+        
+        <button id="menu-toggle" title="Menu Playlist">☰</button>
+        
+        <div id="media-controls">
+            <div id="audio-control" class="control-box">
+                <label>🔊</label>
+                <select id="audio-tracks"></select>
+            </div>
+            
+            <div id="subtitle-control" class="control-box">
+                <label>💬</label>
+                <select id="subtitle-tracks"></select>
+            </div>
+
+            <div id="translate-control" class="control-box">
+                <label>🌐</label>
+                <select id="translate-api">
+                    <option value="off">Off (Asli)</option>
+                    <option value="chrome" selected>Google (Fast)</option>
+                    <option value="deeplx">DeepLX (Akurat)</option>
+                    <option value="lingva">Lingva (OS)</option>
+                    <option value="google">Google (Legacy)</option>
+                    <option value="mymemory">MyMemory</option>
+                </select>
+            </div>
+            
+            <button class="btn-icon" id="btn-pip" title="Picture in Picture">🔲</button>
+            <button class="btn-icon" id="btn-fullscreen" title="Layar Penuh (Rotasi Otomatis)">⛶</button>
+        </div>
+        
+        <div id="player-controls">
+            <button class="ctrl-btn" id="btn-prev-chan" title="Channel Sebelumnya">⏮</button>
+            <button class="ctrl-btn" id="btn-rewind" title="Mundur 10 Detik">⏪</button>
+            <button class="ctrl-btn play-btn" id="btn-play">▶</button>
+            <button class="ctrl-btn" id="btn-forward" title="Maju 10 Detik">⏩</button>
+            <button class="ctrl-btn" id="btn-next-chan" title="Channel Berikutnya">⏭</button>
+        </div>
+
+        <div id="osd-overlay"></div>
+
+        <div id="gesture-indicator">
+            <div id="gesture-icon">🔊</div>
+            <div class="gesture-bar-bg">
+                <div id="gesture-fill"></div>
+            </div>
+            <div id="gesture-text">50%</div>
+        </div>
+
+        <div id="sidebar" class="hidden">
+            <div class="sidebar-header">
+                <h2>Menu IPTV</h2>
+                <button class="btn-close-sidebar" id="btn-close-sidebar">✕</button>
+            </div>
+
+            <div id="sidebar-tabs">
+                <button class="tab-btn active" id="tab-1" onclick="switchTab(1)">Live TV</button>
+                <button class="tab-btn" id="tab-2" onclick="switchTab(2)">Pengaturan</button>
+            </div>
+
+            <div id="slide-1" class="sidebar-slide active">
+                <div id="playlist">
+                    <div style="padding: 50px 20px; text-align: center; color: var(--text-muted); font-size: 14px; line-height: 1.6;">
+                        Belum ada siaran.<br><br>Buka tab <b>Pengaturan</b> untuk memuat Playlist.
+                    </div>
+                </div>
+                <div id="check-status-bar">
+                    <span>Memindai Jaringan:</span>
+                    <span class="progress-text" id="check-progress">...</span>
+                </div>
+            </div>
+
+            <div id="slide-2" class="sidebar-slide">
+                <div id="admin-panel">
+                    
+                    <div class="admin-section">
+                        <label>1. Tambah via M3U (File Lokal)</label>
+                        <input type="file" id="file-upload" accept=".m3u" style="margin-bottom: 0;">
+                    </div>
+                    
+                    <div class="admin-section">
+                        <label>2. Tambah via URL M3U / RAW Text</label>
+                        <p style="font-size:11px; color:var(--text-muted); margin-bottom:15px; line-height: 1.5;">Mendukung M3U Link dan Raw Paste (Asalkan berisi #EXTM3U). Playlist otomatis digabungkan.</p>
+                        
+                        <div class="url-slot-container">
+                            <input type="text" id="url-input-1" placeholder="Slot 1: https://...">
+                            <button class="btn-slot" onclick="loadUrlSlot(1)">Muat</button>
+                        </div>
+                        <div class="url-slot-container">
+                            <input type="text" id="url-input-2" placeholder="Slot 2: https://...">
+                            <button class="btn-slot" onclick="loadUrlSlot(2)">Muat</button>
+                        </div>
+                        <div class="url-slot-container">
+                            <input type="text" id="url-input-3" placeholder="Slot 3: https://...">
+                            <button class="btn-slot" onclick="loadUrlSlot(3)">Muat</button>
+                        </div>
+                        <div class="url-slot-container">
+                            <input type="text" id="url-input-4" placeholder="Slot 4: https://...">
+                            <button class="btn-slot" onclick="loadUrlSlot(4)">Muat</button>
+                        </div>
+                        <div class="url-slot-container" style="margin-bottom:10px;">
+                            <input type="text" id="url-input-5" placeholder="Slot 5: https://...">
+                            <button class="btn-slot" onclick="loadUrlSlot(5)">Muat</button>
+                        </div>
+                        
+                        <button class="btn-action" style="background: var(--accent); margin-top: 5px;" onclick="loadAllUrlSlots()">🚀 Muat Semua Slot Sekaligus</button>
+                    </div>
+
+                    <div class="admin-section" style="border-color: rgba(14, 165, 233, 0.4); background: rgba(14, 165, 233, 0.05);">
+                        <label style="color: var(--accent);">3. Putar URL Channel Tunggal</label>
+                        <p style="font-size:11px; color:var(--text-muted); margin-bottom:15px; line-height: 1.5;">Masukkan link video satuan (.mpd, .m3u8, .ts, .mp4).</p>
+                        <div class="url-slot-container" style="margin-bottom:0; border-color: rgba(14, 165, 233, 0.5);">
+                            <input type="text" id="single-url-input" placeholder="https://domain.com/stream.mpd">
+                            <button class="btn-slot" style="background: var(--accent); color: white;" onclick="playSingleStream()">Putar</button>
+                        </div>
+                    </div>
+
+                    <div class="admin-section" style="border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.05);">
+                        <label style="color: #10b981;">4. Web M3U8 Sniffer (Extractor)</label>
+                        <p style="font-size:11px; color:var(--text-muted); margin-bottom:15px; line-height: 1.5;">Masukkan URL website streaming. Sistem akan mengunduh source code dan mengekstrak link .m3u8 yang tersembunyi secara otomatis tanpa membebani browser.</p>
+                        <div class="url-slot-container" style="margin-bottom:0; border-color: rgba(16, 185, 129, 0.5);">
+                            <input type="text" id="sniffer-url-input" placeholder="https://website-streaming.com/nonton">
+                            <button class="btn-slot" id="btn-sniff" style="background: #10b981; color: white;" onclick="sniffUrl()">🔍 Sniff</button>
+                        </div>
+                    </div>
+
+                    <div class="admin-section">
+                        <label>5. Ekspor Master Playlist</label>
+                        <p style="font-size:11px; color:var(--text-muted); margin-bottom:15px; line-height: 1.5;">Unduh gabungan daftar saluran yang lancar ke format .m3u asli tanpa duplikat.</p>
+                        <button class="btn-action" style="background:var(--glass-bg); border: 1px solid var(--glass-border);" onclick="exportActivePlaylist()">Simpan M3U</button>
+                    </div>
+
+                    <div class="admin-section" style="border-color: rgba(220, 38, 38, 0.3); background: rgba(220, 38, 38, 0.05);">
+                        <label style="color: #f87171;">6. Reset Total</label>
+                        <button class="btn-action" style="background:#ef4444;" onclick="resetCache()">Hapus Semua Daftar & Cache</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Menggunakan "var" di level global untuk mencegah error redeklarasi di CodePen
+        var StorageHelper = {
+            get: function(key) {
+                try { return localStorage.getItem(key); } 
+                catch(e) { return null; }
+            },
+            set: function(key, value) {
+                try { localStorage.setItem(key, value); } 
+                catch(e) {}
+            },
+            remove: function(key) {
+                try { localStorage.removeItem(key); } 
+                catch(e) {}
+            }
+        };
+
+        var video = document.getElementById('video');
+        var playlistDiv = document.getElementById('playlist');
+        var sidebar = document.getElementById('sidebar');
+        var vignette = document.getElementById('vignette-effect');
+        var osdOverlay = document.getElementById('osd-overlay');
+        var checkStatusBar = document.getElementById('check-status-bar');
+        var checkProgress = document.getElementById('check-progress');
+        
+        var audioControl = document.getElementById('audio-control');
+        var audioSelect = document.getElementById('audio-tracks');
+        var subtitleControl = document.getElementById('subtitle-control');
+        var subtitleSelect = document.getElementById('subtitle-tracks');
+        
+        var translateControl = document.getElementById('translate-control');
+        var translateApiSelect = document.getElementById('translate-api');
+        
+        var btnPlay = document.getElementById('btn-play');
+        var menuToggle = document.getElementById('menu-toggle');
+        var btnCloseSidebar = document.getElementById('btn-close-sidebar');
+        var btnFullscreen = document.getElementById('btn-fullscreen');
+        var btnPip = document.getElementById('btn-pip');
+
+        var gestureIndicator = document.getElementById('gesture-indicator');
+        var gestureIcon = document.getElementById('gesture-icon');
+        var gestureFill = document.getElementById('gesture-fill');
+        var gestureText = document.getElementById('gesture-text');
+
+        var hls = null;
+        var tsPlayer = null; 
+        var dashPlayer = null;
+        
+        var flatChannelList = []; 
+        var currentChannelIndex = -1;
+        var osdTimer, autoSkipTimer, gestureTimer;
+        var isInitialAutoPlayDone = false; 
+        
+        var statusCache = {};
+        var cachedStatusString = StorageHelper.get('iptvStatusCache');
+        if (cachedStatusString) {
+            try { statusCache = JSON.parse(cachedStatusString); } catch(e) {}
+        }
+        
+        var isCheckingBackground = false;
+        var checkQueue = [];
+        var checkedCount = 0;
+        var totalChannelsToCheck = 0;
+        var isIndoAudioDetected = false; 
+
+        // ==========================================
+        // SMART PROXY FETCHER (Mengatasi CORS & 400 Bad Request)
+        // Ditingkatkan dengan Timeout 15s dan Anti-Cache
+        // ==========================================
+        async function fetchWithProxy(targetUrl, statusElId = null) {
+            var statusEl = statusElId ? document.getElementById(statusElId) : null;
+            var encodedUrl = encodeURIComponent(targetUrl);
+            
+            // Urutan prioritas proxy yang lebih agresif, codetabs tidak di-encode agar tidak error 400
+            var proxies = [
+                { url: targetUrl, type: 'text' },
+                { url: "https://api.allorigins.win/raw?url=" + encodedUrl, type: 'text' }, 
+                { url: "https://api.codetabs.com/v1/proxy?quest=" + targetUrl, type: 'text' },
+                { url: "https://corsproxy.io/?" + encodedUrl, type: 'text' },
+                { url: "https://api.allorigins.win/get?url=" + encodedUrl, type: 'json' }
+            ];
+
+            for (var i = 0; i < proxies.length; i++) {
+                if (statusEl && i > 0) {
+                    statusEl.innerText = "Mencoba server proxy " + i + " dari " + (proxies.length - 1) + "...";
+                }
+                
+                try {
+                    // Batasi waktu loading maksimal 15 detik per proxy
+                    var controller = new AbortController();
+                    var timeoutId = setTimeout(() => controller.abort(), 15000); 
+
+                    var res = await fetch(proxies[i].url, { 
+                        signal: controller.signal,
+                        cache: 'no-store'
+                    });
+                    
+                    clearTimeout(timeoutId);
+
+                    if (res.ok) {
+                        var textData = "";
+                        
+                        if (proxies[i].type === 'json') {
+                            var jsonData = await res.json();
+                            textData = jsonData.contents;
+                        } else {
+                            textData = await res.text();
+                        }
+                        
+                        // Fungsi fetchWithProxy ini sekarang digunakan juga oleh Sniffer, 
+                        // jadi kita lemaskan validasinya (asal ada text yang kembali, anggap sukses)
+                        if (textData && textData.trim().length > 0) {
+                            if (statusEl) statusEl.innerText = "✅ Berhasil menarik data!";
+                            return textData;
+                        }
+                    }
+                } catch (err) {
+                    console.warn("Proxy " + i + " gagal:", err.message);
+                }
+            }
+            throw new Error("Semua proxy gagal merespons atau diblokir secara penuh.");
+        }
+
+        var backgroundAutoTxt = "";
+
+        async function loadBackgroundPlaylist() {
+            var masterUrl = "https://iptv-web.app/ID";
+            try {
+                var text = await fetchWithProxy(masterUrl);
+                if (text.includes("#EXTM3U") || text.includes("#EXTINF")) {
+                    backgroundAutoTxt = text;
+                }
+            } catch (e) {
+                console.warn("Background playlist load failed.");
+            }
+        }
+
+        // ==========================================
+        // HOVER TRACKING UNTUK MENAHAN AUTO-HIDE UI
+        // ==========================================
+        var hideUiTimer;
+        var isSwiping = false; 
+        var isHoveringUI = false; 
+
+        var uiElementsToHover = [
+            document.getElementById('sidebar'),
+            document.getElementById('media-controls'),
+            document.getElementById('player-controls'),
+            document.getElementById('menu-toggle')
+        ];
+
+        uiElementsToHover.forEach(el => {
+            if(!el) return;
+            el.addEventListener('mouseenter', () => { isHoveringUI = true; clearTimeout(hideUiTimer); });
+            el.addEventListener('mouseleave', () => { isHoveringUI = false; showUI(); });
+            el.addEventListener('touchstart', () => { isHoveringUI = true; clearTimeout(hideUiTimer); }, {passive: true});
+            el.addEventListener('touchend', () => { isHoveringUI = false; showUI(); }, {passive: true});
+        });
+
+        function showUI() {
+            document.body.classList.remove('ui-hidden');
+            clearTimeout(hideUiTimer);
+            if (!isHoveringUI) {
+                hideUiTimer = setTimeout(() => hideUI(false), 5000); 
+            }
+        }
+
+        function hideUI(force = false) {
+            if (isHoveringUI && !force) return; 
+            
+            if (!video.paused || force) {
+                document.body.classList.add('ui-hidden');
+                if (!sidebar.classList.contains('hidden')) {
+                    sidebar.classList.add('hidden');
+                }
+            }
+        }
+
+        ['mousemove', 'wheel', 'keydown'].forEach(evt => {
+            document.addEventListener(evt, () => {
+                if (document.body.classList.contains('ui-hidden')) showUI(); 
+                else { 
+                    clearTimeout(hideUiTimer); 
+                    if (!isHoveringUI) hideUiTimer = setTimeout(() => hideUI(false), 5000); 
+                }
+            }, { passive: true });
+        });
+
+        document.getElementById('ui-layer').addEventListener('click', (e) => {
+            if (isSwiping) { isSwiping = false; showUI(); return; }
+            if (e.target.closest('#sidebar') || e.target.closest('#player-controls') || e.target.closest('#media-controls') || e.target.closest('#menu-toggle')) {
+                showUI(); return;
+            }
+            if (document.body.classList.contains('ui-hidden')) showUI();
+            else { hideUI(true); clearTimeout(hideUiTimer); }
+        });
+
+        // ==========================================
+        // AUTO LANDSCAPE & FULLSCREEN KONTROL
+        // ==========================================
+        btnFullscreen.addEventListener('click', async () => {
+            try {
+                if (!document.fullscreenElement) {
+                    await document.documentElement.requestFullscreen();
+                    if (screen.orientation && screen.orientation.lock) {
+                        await screen.orientation.lock('landscape').catch(e => console.warn("Browser mencegah lock orientasi: ", e));
+                    }
+                } else {
+                    await document.exitFullscreen();
+                    if (screen.orientation && screen.orientation.unlock) {
+                        screen.orientation.unlock();
+                    }
+                }
+            } catch (err) { console.log(err); }
+        });
+
+        window.addEventListener("orientationchange", function() {
+            setTimeout(() => {
+                if (window.orientation === 90 || window.orientation === -90) {
+                    document.body.classList.add('is-landscape');
+                    hideUI(true); 
+                } else {
+                    document.body.classList.remove('is-landscape');
+                    showUI();
+                }
+            }, 200);
+        });
+
+        btnPip.addEventListener('click', async () => {
+            try {
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                } else if (document.pictureInPictureEnabled) {
+                    await video.requestPictureInPicture();
+                } else {
+                    showOSD("Browser tidak mendukung Picture-in-Picture", true);
+                }
+            } catch (err) {
+                showOSD("Gagal mengaktifkan PiP", true);
+            }
+        });
+
+        video.addEventListener('play', () => { btnPlay.innerHTML = '⏸'; showUI(); });
+        video.addEventListener('pause', () => { btnPlay.innerHTML = '▶'; showUI(); });
+
+        btnPlay.addEventListener('click', () => video.paused ? video.play() : video.pause());
+        document.getElementById('btn-prev-chan').addEventListener('click', () => playStream(getNextValidIndex(currentChannelIndex, -1)));
+        document.getElementById('btn-next-chan').addEventListener('click', () => playStream(getNextValidIndex(currentChannelIndex, 1)));
+        document.getElementById('btn-rewind').addEventListener('click', () => video.currentTime -= 10);
+        document.getElementById('btn-forward').addEventListener('click', () => video.currentTime += 10);
+
+        function switchTab(tabIndex) {
+            document.getElementById('tab-1').classList.remove('active');
+            document.getElementById('tab-2').classList.remove('active');
+            document.getElementById('slide-1').classList.remove('active');
+            document.getElementById('slide-2').classList.remove('active');
+            document.getElementById("tab-" + tabIndex).classList.add('active');
+            document.getElementById("slide-" + tabIndex).classList.add('active');
+        }
+
+        menuToggle.addEventListener('click', (e) => {
+            e.stopPropagation(); 
+            sidebar.classList.toggle('hidden');
+            showUI();
+        });
+
+        btnCloseSidebar.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sidebar.classList.add('hidden');
+        });
+
+        function showOSD(message, isError = false) {
+            clearTimeout(osdTimer);
+            osdOverlay.innerHTML = message;
+            osdOverlay.className = isError ? 'error' : '';
+            osdOverlay.style.display = 'block';
+            if (!isError) osdTimer = setTimeout(() => { osdOverlay.style.display = 'none'; }, 3000);
+        }
+
+        // ==========================================
+        // GESTURE KONTROL
+        // ==========================================
+        var startX = 0, startY = 0;
+        var startVol = 1, startBright = 100;
+        var isVolumeSwipe = false, isBrightSwipe = false, isHorizSwipe = false;
+        var currentBright = 100; 
+
+        var pCont = document.getElementById('ui-layer'); 
+
+        function showGestureUI(icon, percent) {
+            clearTimeout(gestureTimer);
+            gestureIcon.innerHTML = icon;
+            gestureFill.style.height = percent + "%";
+            gestureText.innerText = percent + "%";
+            gestureIndicator.classList.add('show');
+            gestureTimer = setTimeout(() => gestureIndicator.classList.remove('show'), 1500);
+        }
+
+        pCont.addEventListener('touchstart', e => { 
+            isSwiping = false; isVolumeSwipe = false; isBrightSwipe = false; isHorizSwipe = false;
+            if(e.target.closest('#sidebar') || e.target.closest('#player-controls') || e.target.closest('#media-controls')) return; 
+            startX = e.touches[0].screenX; startY = e.touches[0].screenY; 
+            startVol = video.volume; startBright = currentBright;
+        }, {passive: false});
+
+        pCont.addEventListener('touchmove', e => {
+            if(e.target.closest('#sidebar') || e.target.closest('#player-controls') || e.target.closest('#media-controls')) return;
+            var curX = e.touches[0].screenX, curY = e.touches[0].screenY;
+            var dx = curX - startX, dy = curY - startY;
+
+            if (Math.abs(dx) > 20 || Math.abs(dy) > 20) { e.preventDefault(); isSwiping = true; }
+
+            if (!isVolumeSwipe && !isBrightSwipe && !isHorizSwipe) {
+                if (Math.abs(dx) > Math.abs(dy)) isHorizSwipe = true; 
+                else {
+                    if (startX > window.innerWidth / 2) isVolumeSwipe = true; 
+                    else isBrightSwipe = true; 
+                }
+            }
+
+            if (isVolumeSwipe || isBrightSwipe) {
+                var delta = -dy / 200; 
+                if (isVolumeSwipe) {
+                    var newVol = Math.max(0, Math.min(1, startVol + delta));
+                    video.volume = newVol;
+                    showGestureUI(newVol === 0 ? '🔇' : (newVol < 0.5 ? '🔉' : '🔊'), Math.round(newVol * 100));
+                } else if (isBrightSwipe) {
+                    var newBright = Math.max(10, Math.min(100, startBright + (delta * 100)));
+                    currentBright = newBright;
+                    video.style.filter = "brightness(" + newBright + "%)";
+                    showGestureUI(newBright < 50 ? '🌤️' : '☀️', Math.round(newBright));
+                }
+            }
+        }, {passive: false});
+        
+        pCont.addEventListener('touchend', e => {
+            if(e.target.closest('#sidebar') || e.target.closest('#player-controls') || e.target.closest('#media-controls')) return;
+            var dx = e.changedTouches[0].screenX - startX, dy = e.changedTouches[0].screenY - startY;
+            if (isHorizSwipe && Math.abs(dx) > 70) {
+                if (dx < 0) playStream(getNextValidIndex(currentChannelIndex, 1)); 
+                if (dx > 0) playStream(getNextValidIndex(currentChannelIndex, -1));  
+            }
+            if (Math.abs(dx) < 10 && Math.abs(dy) < 10) isSwiping = false;
+        });
+
+        // ==========================================
+        // SISTEM TERJEMAHAN (PRE-TRANSLATE)
+        // ==========================================
+        var translateCache = {}; 
+        var preTranslateScanner = null;
+
+        async function doTranslate(text, api) {
+            if (!text || text.trim() === '') return text;
+            var cacheKey = api + '_' + text.trim();
+            if (translateCache[cacheKey]) return translateCache[cacheKey];
+
+            try {
+                var resText = text;
+                var url = "";
+                var fetchOptions = undefined;
+
+                if (api === 'chrome') {
+                    url = "https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=id&q=" + encodeURIComponent(text);
+                    var res = await fetch(url);
+                    var data = await res.json();
+                    resText = data[0]; 
+                } 
+                else if (api === 'deeplx') {
+                    url = "https://api.deeplx.org/translate";
+                    fetchOptions = {
+                        method: "POST", 
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ text: text, source_lang: "auto", target_lang: "id" })
+                    };
+                    var res2 = await fetch(url, fetchOptions);
+                    var data2 = await res2.json();
+                    if(data2.data) resText = data2.data;
+                }
+                else if (api === 'lingva') {
+                    url = "https://lingva.ml/api/v1/auto/id/" + encodeURIComponent(text);
+                    var res3 = await fetch(url);
+                    var data3 = await res3.json();
+                    if(data3.translation) resText = data3.translation;
+                }
+                else if (api === 'google') {
+                    url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=id&dt=t&q=" + encodeURIComponent(text);
+                    var res4 = await fetch(url);
+                    var data4 = await res4.json();
+                    resText = data4[0].map(item => item[0]).join('');
+                } 
+                else if (api === 'mymemory') {
+                    url = "https://api.mymemory.translated.net/get?q=" + encodeURIComponent(text) + "&langpair=Autodetect|id";
+                    var res5 = await fetch(url);
+                    var data5 = await res5.json();
+                    if(data5.responseData) resText = data5.responseData.translatedText;
+                }
+                
+                translateCache[cacheKey] = resText; 
+                return resText;
+            } catch (e) {
+                return text; 
+            }
+        }
+
+        function startPreTranslateScanner() {
+            if (preTranslateScanner) clearInterval(preTranslateScanner);
+            
+            preTranslateScanner = setInterval(() => {
+                var api = translateApiSelect.value;
+                if (api === 'off') return;
+
+                var tracks = video.textTracks;
+                for (var i = 0; i < tracks.length; i++) {
+                    var track = tracks[i];
+                    
+                    if (track.mode === 'showing' || track.mode === 'hidden') {
+                        var cues = track.cues;
+                        if (!cues) continue;
+
+                        var activeFetches = 0;
+                        for (var j = 0; j < cues.length; j++) {
+                            var cue = cues[j];
+                            if (cue.endTime < video.currentTime) continue;
+
+                            if (!cue._isTranslated && !cue._isTranslating) {
+                                cue._isTranslating = true;
+                                if (!cue._originalText) cue._originalText = cue.text;
+
+                                doTranslate(cue._originalText, api).then(resText => {
+                                    if (resText && resText !== cue._originalText) {
+                                        cue.text = resText;
+                                    }
+                                    cue._isTranslated = true;
+                                    cue._isTranslating = false;
+                                }).catch(() => {
+                                    cue._isTranslating = false; 
+                                });
+
+                                activeFetches++;
+                                if (activeFetches >= 5) break; 
+                            }
+                        }
+                    }
+                }
+            }, 1000);
+        }
+
+        translateApiSelect.addEventListener('change', (e) => {
+            var apiSelected = e.target.value;
+            var tracks = video.textTracks;
+
+            if (apiSelected === 'off') {
+                showOSD("Terjemahan Subtitle Dimatikan");
+                for (var i = 0; i < tracks.length; i++) {
+                    if (tracks[i].cues) {
+                        for(var j = 0; j < tracks[i].cues.length; j++) {
+                            var cue = tracks[i].cues[j];
+                            if (cue._originalText) {
+                                cue.text = cue._originalText;
+                                cue._isTranslated = false;
+                            }
+                        }
+                    }
+                }
+            } else {
+                var apiName = e.target.options[e.target.selectedIndex].text;
+                showOSD("Penerjemah Aktif: " + apiName);
+                for (var k = 0; k < tracks.length; k++) {
+                    if (tracks[k].cues) {
+                        for(var l = 0; l < tracks[k].cues.length; l++) {
+                            tracks[k].cues[l]._isTranslated = false; 
+                        }
+                    }
+                }
+            }
+        });
+
+        // ==========================================
+        // FUNGSI LOAD URL (MANUAL USER)
+        // ==========================================
+        function initUrlSlots() {
+            for (var i = 1; i <= 5; i++) {
+                var savedUrl = StorageHelper.get("iptvUrlSlot" + i);
+                if (savedUrl) document.getElementById("url-input-" + i).value = savedUrl;
+            }
+        }
+
+        async function processM3uFetch(urlToFetch, fallbackIndexName) {
+            switchTab(1); 
+            playlistDiv.innerHTML = "<div style=\"text-align:center; padding:50px 20px; color:var(--text-muted); font-size: 14px; line-height: 1.6;\">Menarik Playlist...<br><br><span id=\"proxy-status\" style=\"font-size:12px; font-weight:800; color:var(--accent);\">Menyiapkan koneksi...</span></div>";
+            
+            try {
+                var newTxt = await fetchWithProxy(urlToFetch, 'proxy-status');
+                
+                if (!newTxt.includes("#EXTM3U") && !newTxt.includes("#EXTINF")) {
+                    throw new Error("File bukan format M3U yang valid.");
+                }
+
+                var existingTxt = StorageHelper.get('savedIPTV') || '';
+                var combinedTxt = existingTxt + '\n' + newTxt;
+                
+                StorageHelper.set('savedIPTV', combinedTxt); 
+                renderPlaylist(combinedTxt);
+            } catch (e) { 
+                switchTab(2); 
+                alert("Gagal memuat Data dari " + fallbackIndexName + ".\n\nAlasan: " + e.message); 
+                playlistDiv.innerHTML = "<div style=\"padding: 50px 20px; text-align: center; color: var(--text-muted); font-size: 14px; line-height: 1.6;\">Belum ada siaran.<br><br>Buka tab <b>Pengaturan</b> untuk memuat Playlist.</div>";
+            }
+        }
+
+        function loadUrlSlot(slotIndex) {
+            var urlInput = document.getElementById("url-input-" + slotIndex);
+            var url = urlInput.value.trim();
+            if (!url) return alert("Silakan masukkan URL pada Slot " + slotIndex);
+            StorageHelper.set("iptvUrlSlot" + slotIndex, url);
+            processM3uFetch(url, "Slot " + slotIndex);
+        }
+
+        async function loadAllUrlSlots() {
+            var urlsToLoad = [];
+            for (var i = 1; i <= 5; i++) {
+                var urlInput = document.getElementById("url-input-" + i);
+                var url = urlInput.value.trim();
+                if (url) {
+                    StorageHelper.set("iptvUrlSlot" + i, url);
+                    urlsToLoad.push(url);
+                }
+            }
+            
+            if (urlsToLoad.length === 0) return alert("Silakan isi minimal satu Slot URL.");
+
+            switchTab(1);
+            playlistDiv.innerHTML = "<div style=\"text-align:center; padding:50px 20px; color:var(--text-muted); font-size: 14px; line-height: 1.6;\">Menarik " + urlsToLoad.length + " Playlist Sekaligus...<br><br><span id=\"proxy-status\" style=\"font-size:12px; font-weight:800; color:var(--accent);\">Menyiapkan koneksi...</span></div>";
+
+            var combinedNewTxt = "";
+            var successCount = 0;
+
+            await Promise.all(urlsToLoad.map(async (urlFetch) => {
+                try {
+                    var textData = await fetchWithProxy(urlFetch);
+                    if (textData.includes("#EXTM3U") || textData.includes("#EXTINF")) {
+                        combinedNewTxt += "\n" + textData;
+                        successCount++;
+                    }
+                } catch(err) {
+                    // Silently fail for individual slots if loading all at once
+                }
+            }));
+
+            if (successCount === 0) {
+                switchTab(2); 
+                alert("Gagal memuat semua URL.\n\nSistem diblokir oleh CORS atau isi tidak memiliki format M3U."); 
+                playlistDiv.innerHTML = "<div style=\"padding: 50px 20px; text-align: center; color: var(--text-muted); font-size: 14px; line-height: 1.6;\">Belum ada siaran.<br><br>Buka tab <b>Pengaturan</b> untuk memuat Playlist.</div>";
+                return;
+            }
+            
+            var existingTxt = StorageHelper.get('savedIPTV') || '';
+            var finalTxt = existingTxt + '\n' + combinedNewTxt;
+            
+            StorageHelper.set('savedIPTV', finalTxt); 
+            renderPlaylist(finalTxt);
+        }
+
+        function playSingleStream() {
+            var urlInput = document.getElementById("single-url-input");
+            var url = urlInput.value.trim();
+            if (!url) return alert("Silakan masukkan URL Streaming yang valid.");
+            
+            var randomID = Math.floor(Math.random() * 10000);
+            var channelName = "Stream " + randomID;
+            
+            var newM3uEntry = "\n#EXTINF:-1 group-title=\"Link Langsung\", " + channelName + "\n" + url;
+            
+            var existingTxt = StorageHelper.get('savedIPTV') || '';
+            var combinedTxt = existingTxt + newM3uEntry;
+            
+            StorageHelper.set('savedIPTV', combinedTxt); 
+            renderPlaylist(combinedTxt);
+            
+            var newIndex = flatChannelList.findIndex(function(c) { return c.url === url; });
+            if (newIndex !== -1) {
+                isInitialAutoPlayDone = true; 
+                setTimeout(function() { playStream(newIndex); }, 500); 
+            }
+            urlInput.value = ""; 
+        }
+
+        // ==========================================
+        // FITUR BARU: M3U8 WEB SNIFFER (REGEX EXTRACTOR)
+        // ==========================================
+        async function sniffUrl() {
+            var urlInput = document.getElementById("sniffer-url-input");
+            var btn = document.getElementById("btn-sniff");
+            var targetUrl = urlInput.value.trim();
+            
+            if (!targetUrl || !targetUrl.startsWith("http")) return alert("Masukkan URL website yang valid (http/https).");
+            
+            btn.innerText = "⏳ Sniffing...";
+            btn.disabled = true;
+
+            try {
+                // Menarik raw source code dari website target menggunakan proxy CORS
+                var htmlData = await fetchWithProxy(targetUrl);
+                
+                // Regex super cepat untuk menangkap URL HTTP/HTTPS berakhiran .m3u8 
+                // Regex ini akan mengambil URL penuh termasuk query string (token) jika ada
+                var regex = /https?:\/\/[^\s"'<>|]+\.m3u8[^\s"'<>|]*/gi;
+                var matches = htmlData.match(regex);
+                
+                if (matches && matches.length > 0) {
+                    // Menggunakan Set untuk membuang URL m3u8 yang duplikat (sama persis)
+                    var uniqueUrls = Array.from(new Set(matches));
+                    var newM3uEntries = "";
+                    
+                    for (var i = 0; i < uniqueUrls.length; i++) {
+                        var streamUrl = uniqueUrls[i];
+                        var hostName = "Unknown Host";
+                        try {
+                            var urlObj = new URL(streamUrl);
+                            hostName = urlObj.hostname;
+                        } catch(e) {}
+                        
+                        // Menambahkan hasil sniff sebagai list M3U buatan
+                        newM3uEntries += "\n#EXTINF:-1 group-title=\"M3U8 Sniffed\", [Sniff] " + hostName + " " + (i+1) + "\n" + streamUrl;
+                    }
+                    
+                    var existingTxt = StorageHelper.get('savedIPTV') || '';
+                    var combinedTxt = existingTxt + newM3uEntries;
+                    StorageHelper.set('savedIPTV', combinedTxt);
+                    renderPlaylist(combinedTxt);
+                    
+                    alert("✅ Berhasil menemukan " + uniqueUrls.length + " link M3U8!");
+                    switchTab(1); // Otomatis pindah ke tab Live TV untuk melihat hasil
+                    urlInput.value = "";
+                } else {
+                    alert("Tidak ditemukan link M3U8 pada halaman tersebut.\nMungkin link di-obfuscate (disembunyikan oleh JavaScript enkripsi).");
+                }
+            } catch (e) {
+                alert("Gagal mengakses web target.\nAlasan: " + e.message);
+            } finally {
+                btn.innerText = "🔍 Sniff";
+                btn.disabled = false;
+            }
+        }
+
+        document.getElementById('file-upload').addEventListener('change', e => {
+            var f = e.target.files[0]; if (!f) return; var r = new FileReader();
+            r.onload = ev => { 
+                var existingTxt = StorageHelper.get('savedIPTV') || '';
+                var combinedTxt = existingTxt + '\n' + ev.target.result;
+                StorageHelper.set('savedIPTV', combinedTxt); 
+                renderPlaylist(combinedTxt); 
+            };
+            r.readAsText(f);
+        });
+
+        // ==========================================
+        // MULTI-ENGINE PLAYER ROUTER
+        // ==========================================
+        function playStream(index) {
+            if (index < 0 || index >= flatChannelList.length || flatChannelList[index].isDead) return;
+            clearTimeout(autoSkipTimer);
+            var channel = flatChannelList[index]; currentChannelIndex = index; isIndoAudioDetected = true; 
+            
+            document.querySelectorAll('.channel-btn').forEach(btn => btn.classList.remove('active-channel'));
+            var activeBtn = document.getElementById("chan-" + index);
+            if (activeBtn) {
+                activeBtn.classList.add('active-channel');
+                activeBtn.closest('details').open = true;
+                activeBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            if (window.innerWidth <= 768) { sidebar.classList.add('hidden'); }
+
+            showOSD("📺 " + channel.name);
+            var cachedStrength = statusCache[channel.url] && statusCache[channel.url].strength ? statusCache[channel.url].strength : 100;
+            updateBadge(index, 'active', cachedStrength); 
+
+            if (hls) { hls.destroy(); hls = null; }
+            if (tsPlayer) { tsPlayer.destroy(); tsPlayer = null; }
+            if (dashPlayer) { dashPlayer.destroy(); dashPlayer = null; }
+            
+            video.removeAttribute('src');
+            video.load();
+
+            audioControl.style.display = 'none'; 
+            subtitleControl.style.display = 'none';
+            translateControl.style.display = 'none';
+
+            var urlLower = channel.url.toLowerCase();
+            var isM3U8 = urlLower.includes('.m3u8') || urlLower.includes('type=m3u8') || urlLower.includes('/hls/');
+            var isTS = urlLower.includes('.ts') && !isM3U8;
+            var isMPD = urlLower.includes('.mpd');
+
+            if (isM3U8) {
+                if (Hls.isSupported()) {
+                    hls = new Hls({ debug: false, enableWorker: true });
+                    hls.loadSource(channel.url); hls.attachMedia(video);
+                    
+                    hls.on(Hls.Events.MANIFEST_PARSED, function () {
+                        video.play().catch(e => console.log("Autoplay ditahan browser"));
+                        startPreTranslateScanner();
+
+                        var audios = hls.audioTracks;
+                        if (audios && audios.length > 0) {
+                            audioSelect.innerHTML = ''; audioControl.style.display = 'flex';
+                            var indoIndex = -1;
+                            audios.forEach((t, i) => {
+                                var opt = document.createElement('option');
+                                opt.value = i; opt.text = (t.name || t.language || "Audio " + (i + 1)).toUpperCase();
+                                audioSelect.appendChild(opt);
+                                if (opt.text.toLowerCase().match(/(id|ind|indo|indonesia|bahasa|melayu|malay)/)) indoIndex = i;
+                            });
+                            if (indoIndex !== -1) { hls.audioTrack = indoIndex; audioSelect.value = indoIndex; isIndoAudioDetected = true; } 
+                            else { isIndoAudioDetected = false; }
+                        } else { isIndoAudioDetected = false; }
+                    });
+
+                    hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, function(event, data) {
+                        var subs = data.subtitleTracks;
+                        if (subs && subs.length > 0) {
+                            subtitleSelect.innerHTML = '<option value="-1">Off</option>'; 
+                            subtitleControl.style.display = 'flex';
+                            translateControl.style.display = 'flex'; 
+
+                            var indoSubIndex = -1;
+                            subs.forEach((t, i) => {
+                                var opt = document.createElement('option');
+                                opt.value = i; opt.text = (t.name || t.language || "Sub " + (i + 1)).toUpperCase(); 
+                                subtitleSelect.appendChild(opt);
+                                if (opt.text.toLowerCase().match(/(id|ind|indo|indonesia|bahasa|melayu|malay|ms)/)) indoSubIndex = i;
+                            });
+                            
+                            if (!isIndoAudioDetected && indoSubIndex !== -1) {
+                                hls.subtitleTrack = indoSubIndex; subtitleSelect.value = indoSubIndex;
+                            } else if (!isIndoAudioDetected && indoSubIndex === -1) {
+                                hls.subtitleTrack = -1; subtitleSelect.value = -1;
+                            }
+                        }
+                    });
+
+                    audioSelect.onchange = (e) => { hls.audioTrack = parseInt(e.target.value); };
+                    subtitleSelect.onchange = (e) => { hls.subtitleTrack = parseInt(e.target.value); };
+                    hls.on(Hls.Events.ERROR, function (event, data) {
+                        if (data.fatal) {
+                            if (data.type === Hls.ErrorTypes.NETWORK_ERROR || data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                                hls.destroy(); updateBadge(index, 'error', 0); autoSkipToNext(); 
+                            }
+                        }
+                    });
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    video.src = channel.url; 
+                    video.addEventListener('loadedmetadata', () => { video.play(); startPreTranslateScanner(); });
+                    video.onerror = () => { updateBadge(index, 'error', 0); autoSkipToNext(); };
+                }
+            } 
+            else if (isMPD) {
+                if (typeof dashjs !== 'undefined') {
+                    dashPlayer = dashjs.MediaPlayer().create();
+                    dashPlayer.initialize(video, channel.url, true);
+                    dashPlayer.on(dashjs.MediaPlayer.events.PLAYBACK_STARTED, () => {
+                        startPreTranslateScanner();
+                    });
+                    dashPlayer.on(dashjs.MediaPlayer.events.ERROR, () => {
+                        updateBadge(index, 'error', 0); autoSkipToNext();
+                    });
+                } else {
+                    video.src = channel.url;
+                    video.play().then(() => startPreTranslateScanner()).catch(e => { updateBadge(index, 'error', 0); autoSkipToNext(); });
+                }
+            }
+            else if (isTS) {
+                if (typeof mpegts !== 'undefined' && mpegts.isSupported()) {
+                    tsPlayer = mpegts.createPlayer({
+                        type: 'mse',
+                        isLive: true,
+                        url: channel.url
+                    });
+                    tsPlayer.attachMediaElement(video);
+                    tsPlayer.load();
+                    tsPlayer.play().then(() => {
+                        startPreTranslateScanner();
+                    }).catch(e => console.log("Autoplay ditahan browser"));
+
+                    tsPlayer.on(mpegts.Events.ERROR, function (event, data) {
+                        updateBadge(index, 'error', 0); autoSkipToNext();
+                    });
+                } else {
+                    video.src = channel.url;
+                    video.play().then(() => startPreTranslateScanner()).catch(e => { updateBadge(index, 'error', 0); autoSkipToNext(); });
+                }
+            } 
+            else {
+                video.src = channel.url;
+                video.play().then(() => startPreTranslateScanner()).catch(e => { updateBadge(index, 'error', 0); autoSkipToNext(); });
+            }
+        }
+
+        // ==========================================
+        // SISTEM PENYARINGAN & SUPER FAST SCANNER
+        // ==========================================
+        function saveStatusCache(url, status, strength) {
+            statusCache[url] = { status: status, strength: strength };
+            StorageHelper.set('iptvStatusCache', JSON.stringify(statusCache));
+        }
+
+        function getSignalBarHTML(strength) {
+            var fillClass = '';
+            if (strength >= 80) fillClass = 'fill-100'; else if (strength >= 60) fillClass = 'fill-80';
+            else if (strength >= 40) fillClass = 'fill-60'; else if (strength >= 20) fillClass = 'fill-40';
+            else fillClass = 'fill-20';
+            return "<div class=\"signal-track\" title=\"Ping: " + strength + "%\"><div class=\"signal-fill " + fillClass + "\" style=\"width: " + strength + "%;\"></div></div>";
+        }
+
+        function updateBadge(index, status, strength = 100) {
+            var badgeContainer = document.getElementById("badge-container-" + index);
+            var btn = document.getElementById("chan-" + index);
+            if (!badgeContainer) return;
+
+            if (status === 'check') { badgeContainer.innerHTML = "<span class=\"status-badge badge-check\">Cek</span>"; } 
+            else if (status === 'active') { 
+                badgeContainer.innerHTML = getSignalBarHTML(strength);
+                saveStatusCache(flatChannelList[index].url, 'active', strength); 
+                flatChannelList[index].isDead = false;
+            } else if (status === 'error') { 
+                saveStatusCache(flatChannelList[index].url, 'error', 0); 
+                flatChannelList[index].isDead = true;
+                if (btn) {
+                    btn.style.display = 'none';
+                    var details = btn.closest('details');
+                    if (details) {
+                        var allHidden = Array.from(details.querySelectorAll('.channel-btn')).every(b => b.style.display === 'none');
+                        if (allHidden) details.style.display = 'none';
+                    }
+                }
+            } else { badgeContainer.innerHTML = "<span class=\"status-badge badge-pending\">Wait</span>"; }
+        }
+
+        function getNextValidIndex(startIndex, direction = 1) {
+            var nextIndex = startIndex; var attempts = 0; var maxAttempts = flatChannelList.length;
+            while(attempts < maxAttempts) {
+                nextIndex += direction;
+                if (nextIndex >= flatChannelList.length) nextIndex = 0;
+                if (nextIndex < 0) nextIndex = flatChannelList.length - 1;
+                
+                if (!flatChannelList[nextIndex].isDead) return nextIndex;
+                attempts++;
+            }
+            return -1;
+        }
+
+        function autoSkipToNext() {
+            if (flatChannelList.length === 0) return;
+            showOSD("Mencari siaran aktif...", true); 
+            clearTimeout(autoSkipTimer);
+            autoSkipTimer = setTimeout(() => {
+                var nextIndex = getNextValidIndex(currentChannelIndex, 1);
+                if(nextIndex !== -1 && nextIndex !== currentChannelIndex) {
+                    playStream(nextIndex);
+                } else {
+                    showOSD("Tidak ada siaran yang aktif.", true);
+                }
+            }, 800); 
+        }
+
+        function startBackgroundCheck() {
+            if (flatChannelList.length === 0 || isCheckingBackground) return;
+            checkQueue = [];
+            flatChannelList.forEach((c, index) => { 
+                var cached = statusCache[c.url];
+                if (!cached || typeof cached === 'string') checkQueue.push(index); 
+            });
+            if(checkQueue.length === 0) return; 
+
+            isCheckingBackground = true; 
+            checkedCount = 0;
+            totalChannelsToCheck = checkQueue.length;
+            
+            checkStatusBar.style.display = 'flex';
+            checkProgress.innerText = "Memulai scan...";
+            processCheckQueue();
+        }
+
+        async function processCheckQueue() {
+            if (checkQueue.length === 0) {
+                isCheckingBackground = false; 
+                checkProgress.innerText = "100% Selesai";
+                setTimeout(() => { checkStatusBar.style.display = 'none'; }, 3000); 
+                return;
+            }
+            
+            var batch = checkQueue.splice(0, 15);
+            
+            await Promise.all(batch.map(async (index) => {
+                await checkSingleUrl(index); 
+                checkedCount++;
+            }));
+            
+            checkProgress.innerText = Math.round((checkedCount / totalChannelsToCheck) * 100) + "%";
+            setTimeout(processCheckQueue, 50); 
+        }
+
+        async function checkSingleUrl(index) {
+            var channel = flatChannelList[index]; 
+            updateBadge(index, 'check');
+            var startTime = performance.now();
+            try {
+                var controller = new AbortController();
+                var timeoutId = setTimeout(() => controller.abort(), 2500); 
+                
+                var response = await fetch(channel.url, { 
+                    method: 'GET', 
+                    mode: 'no-cors',
+                    cache: 'no-cache',
+                    signal: controller.signal 
+                });
+                clearTimeout(timeoutId);
+                
+                var latency = performance.now() - startTime; 
+                var strength = 100;
+                if (latency > 200) strength = Math.max(5, 100 - Math.floor((latency - 200) / 25));
+                
+                updateBadge(index, 'active', strength);
+
+                if (!isInitialAutoPlayDone && currentChannelIndex === -1 && window.innerWidth > 768) {
+                    isInitialAutoPlayDone = true;
+                    playStream(index);
+                }
+
+            } catch (error) { 
+                updateBadge(index, 'error', 0); 
+                if (currentChannelIndex === index) {
+                    autoSkipToNext();
+                }
+            }
+        }
+
+        function renderPlaylist(userSavedData) {
+            playlistDiv.innerHTML = ''; flatChannelList = []; currentChannelIndex = -1;
+            isCheckingBackground = false; checkQueue = []; checkStatusBar.style.display = 'none';
+
+            var combinedData = backgroundAutoTxt + "\n" + (userSavedData || "");
+            var lines = combinedData.split('\n'); 
+            
+            var channels = []; var cur = {}; var metaBuffer = [];
+            var seenUrls = new Set();  
+
+            lines.forEach(line => {
+                var tLine = line.trim();
+                if (tLine === '' || tLine.startsWith('#EXTM3U')) return;
+                
+                if (tLine.startsWith('#')) {
+                    metaBuffer.push(line); 
+                    
+                    if (tLine.toUpperCase().startsWith('#EXTINF')) {
+                        cur.name = tLine.substring(tLine.lastIndexOf(',') + 1).trim() || 'Unknown';
+                        
+                        var logo = tLine.match(/(?:tvg-logo|logo)="([^"]+)"/i); 
+                        cur.logo = logo ? logo[1] : null;
+                        
+                        var group = tLine.match(/(?:group-title|group)="([^"]+)"/i); 
+                        cur.group = (group && group[1] && group[1].trim() !== '') ? group[1].trim() : 'Lainnya';
+                    } else if (tLine.toUpperCase().startsWith('#EXTGRP:')) {
+                        if (!cur.group || cur.group === 'Lainnya') cur.group = tLine.substring(8).trim();
+                    }
+                } else if (tLine.startsWith('http')) {
+                    cur.url = tLine; 
+
+                    if (!seenUrls.has(cur.url)) {
+                        cur.rawMeta = metaBuffer.join('\n'); 
+                        channels.push(cur); 
+                        seenUrls.add(cur.url); 
+                    }
+                    cur = {}; metaBuffer = []; 
+                }
+            });
+
+            if (channels.length === 0) {
+                playlistDiv.innerHTML = '<div style="color:#f87171; text-align:center; padding:50px 20px;">Belum ada saluran.<br><br>Buka pengaturan untuk menambahkan Playlist.</div>'; return;
+            }
+
+            var grouped = channels.reduce((acc, c) => { (acc[c.group] = acc[c.group] || []).push(c); return acc; }, {});
+            var groupKeys = Object.keys(grouped);
+            if (groupKeys.includes('Lainnya')) {
+                groupKeys = groupKeys.filter(k => k !== 'Lainnya'); groupKeys.push('Lainnya'); 
+            }
+
+            var gIndex = 0, isFirst = true;
+            var firstActiveIndex = -1; 
+
+            for (const groupName of groupKeys) {
+                var grpCh = grouped[groupName];
+                var det = document.createElement('details');
+                if (isFirst) det.open = true;
+                
+                var btnContainer = document.createElement('div');
+                
+                grpCh.forEach(c => {
+                    var isDead = false;
+                    var cachedData = statusCache[c.url];
+                    var cachedState = null, cachedStrength = 100;
+                    
+                    if (typeof cachedData === 'string') { cachedState = cachedData; } 
+                    else if (cachedData) { cachedState = cachedData.status; cachedStrength = cachedData.strength; }
+                    
+                    var badgeHTML = "<span class=\"status-badge badge-pending\">WAIT</span>";
+                    if (cachedState === 'active') {
+                        badgeHTML = getSignalBarHTML(cachedStrength);
+                        if (firstActiveIndex === -1) firstActiveIndex = gIndex; 
+                    }
+                    else if (cachedState === 'error') isDead = true; 
+
+                    flatChannelList.push({ ...c, originalIndex: gIndex, isDead: isDead });
+                    
+                    var btn = document.createElement('button');
+                    btn.className = 'channel-btn'; btn.id = "chan-" + gIndex;
+                    if (isDead) btn.style.display = 'none'; 
+                    
+                    var logoHTML = c.logo ? "<img src=\"" + c.logo + "\" class=\"channel-logo\" loading=\"lazy\" onerror=\"this.outerHTML='<div class=\\'no-logo\\'>TV</div>'\">" : "<div class=\"no-logo\">TV</div>";
+                    btn.innerHTML = logoHTML + " <span class=\"channel-name\">" + c.name + "</span> <div id=\"badge-container-" + gIndex + "\" style=\"margin-left: auto;\">" + badgeHTML + "</div>";
+                    btn.onclick = (function(idx) { return function() { playStream(idx); } })(gIndex);
+                    
+                    btnContainer.appendChild(btn); gIndex++;
+                });
+                
+                var hasVisible = Array.from(btnContainer.children).some(b => b.style.display !== 'none');
+                det.innerHTML = "<summary>" + groupName + "</summary>";
+                if (!hasVisible) det.style.display = 'none'; 
+                
+                det.appendChild(btnContainer); playlistDiv.appendChild(det); isFirst = false;
+            }
+            
+            switchTab(1);
+            if (window.innerWidth > 768) { 
+                sidebar.classList.remove('hidden'); 
+                
+                if (currentChannelIndex === -1) {
+                    if (firstActiveIndex !== -1) {
+                        isInitialAutoPlayDone = true;
+                        setTimeout(() => playStream(firstActiveIndex), 100);
+                    } else {
+                        isInitialAutoPlayDone = false; 
+                    }
+                }
+            } else { 
+                sidebar.classList.remove('hidden'); 
+            }
+            setTimeout(startBackgroundCheck, 1000); 
+        }
+
+        function exportActivePlaylist() {
+            var m3uContent = "#EXTM3U\n"; var exportCount = 0;
+            flatChannelList.forEach(c => {
+                var cachedData = statusCache[c.url];
+                var isLancar = (typeof cachedData === 'string' && cachedData === 'active') || (cachedData && cachedData.status === 'active');
+                if (!c.isDead && isLancar) {
+                    if (c.rawMeta) { m3uContent += c.rawMeta + "\n" + c.url + "\n"; } 
+                    else {
+                        var logoAttr = c.logo ? " tvg-logo=\"" + c.logo + "\"" : "";
+                        var groupAttr = c.group && c.group !== 'Lainnya' ? " group-title=\"" + c.group + "\"" : "";
+                        m3uContent += "#EXTINF:-1" + logoAttr + groupAttr + ", " + c.name + "\n" + c.url + "\n";
+                    }
+                    exportCount++;
+                }
+            });
+            if (exportCount === 0) { alert("Belum ada saluran yang berstatus Lancar."); return; }
+            var blob = new Blob([m3uContent], { type: "text/plain" });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a"); a.href = url; a.download = "Master_Playlist_Bersih.m3u";
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+
+        function resetCache() {
+            if(confirm("Hapus semua daftar saluran tambahan dan jejak status?\n\n(Daftar utama latar belakang tetap dipertahankan).")) {
+                
+                StorageHelper.remove('iptvStatusCache');
+                StorageHelper.remove('savedIPTV');
+                
+                statusCache = {};
+                flatChannelList = [];
+                currentChannelIndex = -1;
+                isCheckingBackground = false;
+                checkQueue = [];
+                checkedCount = 0;
+                isInitialAutoPlayDone = false;
+                
+                video.pause();
+                video.removeAttribute('src');
+                video.load();
+                if (hls) { hls.destroy(); hls = null; }
+                if (tsPlayer) { tsPlayer.destroy(); tsPlayer = null; }
+                if (dashPlayer) { dashPlayer.destroy(); dashPlayer = null; }
+                
+                if (preTranslateScanner) clearInterval(preTranslateScanner);
+                
+                renderPlaylist("");
+                
+                switchTab(1);
+                showOSD("🗑️ Saluran tambahan dan jejak dihapus!", false);
+            }
+        }
+
+        // ==========================================
+        // PROSES AWAL SAAT APLIKASI DIBUKA
+        // ==========================================
+        window.onload = async () => { 
+            if (window.innerWidth <= 768) { sidebar.classList.add('hidden'); }
+            initUrlSlots();
+            
+            playlistDiv.innerHTML = '<div style="text-align:center; padding:50px 20px; color:var(--text-muted); font-size: 14px; font-weight:700;">Menghubungkan ke Saluran Utama...</div>';
+            
+            await loadBackgroundPlaylist();
+            
+            var saved = StorageHelper.get('savedIPTV') || ''; 
+            renderPlaylist(saved); 
+            
+            showUI(); 
+        };
+    </script>
+</body>
+</html>
