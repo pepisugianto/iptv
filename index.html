@@ -94,7 +94,12 @@
         .sidebar-slide { flex: 1; display: none; flex-direction: column; overflow: hidden; }
         .sidebar-slide.active { display: flex; }
 
-        #playlist { flex: 1; overflow-y: auto; padding: 10px 25px 25px 25px; scroll-behavior: smooth; }
+        /* FITUR BARU: Kolom Pencarian (Search Bar) */
+        .search-container { padding: 5px 25px 15px 25px; }
+        .search-container input { width: 100%; padding: 14px 18px; font-size: 14px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; outline: none; transition: 0.2s; font-weight: 600; }
+        .search-container input:focus { border-color: var(--accent); box-shadow: 0 0 12px rgba(14, 165, 233, 0.4); background: rgba(0,0,0,0.5); }
+
+        #playlist { flex: 1; overflow-y: auto; padding: 5px 25px 25px 25px; scroll-behavior: smooth; }
         details { margin-bottom: 12px; background: rgba(255,255,255,0.02); border-radius: 18px; overflow: hidden; transition: 0.3s; border: 1px solid transparent; }
         details[open] { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.08); }
         summary { padding: 16px 20px; font-weight: 800; font-size: 15px; cursor: pointer; color: white; list-style: none; display: flex; justify-content: space-between; align-items: center; user-select: none; }
@@ -189,7 +194,8 @@
             .sidebar-header { padding: 35px 20px 15px 20px; } 
             
             #sidebar-tabs { margin: 15px 20px 10px 20px; }
-            #playlist { padding: 10px 20px 20px 20px; }
+            .search-container { padding: 5px 20px 15px 20px; }
+            #playlist { padding: 5px 20px 20px 20px; }
             #admin-panel { padding: 0 20px 20px 20px; }
 
             .url-slot-container { flex-wrap: wrap; padding: 6px; border-radius: 16px; }
@@ -207,7 +213,7 @@
 <body>
 
     <div id="video-layer">
-        <video id="video" playsinline crossorigin="anonymous"></video>
+        <video id="video" playsinline></video>
     </div>
 
     <div id="ui-layer">
@@ -272,6 +278,10 @@
             </div>
 
             <div id="slide-1" class="sidebar-slide active">
+                <div class="search-container">
+                    <input type="text" id="search-input" placeholder="🔍 Cari saluran...">
+                </div>
+
                 <div id="playlist">
                     <div style="padding: 50px 20px; text-align: center; color: var(--text-muted); font-size: 14px; line-height: 1.6;">
                         Belum ada siaran.<br><br>Buka tab <b>Pengaturan</b> untuk memuat Playlist.
@@ -291,60 +301,33 @@
                         <input type="file" id="file-upload" accept=".m3u" style="margin-bottom: 0;">
                     </div>
                     
-                    <div class="admin-section">
-                        <label>2. Tambah via URL M3U / RAW Text</label>
-                        <p style="font-size:11px; color:var(--text-muted); margin-bottom:15px; line-height: 1.5;">Mendukung M3U Link dan Raw Paste (Asalkan berisi #EXTM3U). Playlist otomatis digabungkan.</p>
-                        
-                        <div class="url-slot-container">
-                            <input type="text" id="url-input-1" placeholder="Slot 1: https://...">
-                            <button class="btn-slot" onclick="loadUrlSlot(1)">Muat</button>
-                        </div>
-                        <div class="url-slot-container">
-                            <input type="text" id="url-input-2" placeholder="Slot 2: https://...">
-                            <button class="btn-slot" onclick="loadUrlSlot(2)">Muat</button>
-                        </div>
-                        <div class="url-slot-container">
-                            <input type="text" id="url-input-3" placeholder="Slot 3: https://...">
-                            <button class="btn-slot" onclick="loadUrlSlot(3)">Muat</button>
-                        </div>
-                        <div class="url-slot-container">
-                            <input type="text" id="url-input-4" placeholder="Slot 4: https://...">
-                            <button class="btn-slot" onclick="loadUrlSlot(4)">Muat</button>
-                        </div>
-                        <div class="url-slot-container" style="margin-bottom:10px;">
-                            <input type="text" id="url-input-5" placeholder="Slot 5: https://...">
-                            <button class="btn-slot" onclick="loadUrlSlot(5)">Muat</button>
-                        </div>
-                        
-                        <button class="btn-action" style="background: var(--accent); margin-top: 5px;" onclick="loadAllUrlSlots()">🚀 Muat Semua Slot Sekaligus</button>
-                    </div>
-
                     <div class="admin-section" style="border-color: rgba(14, 165, 233, 0.4); background: rgba(14, 165, 233, 0.05);">
-                        <label style="color: var(--accent);">3. Putar URL Channel Tunggal</label>
-                        <p style="font-size:11px; color:var(--text-muted); margin-bottom:15px; line-height: 1.5;">Masukkan link video satuan (.mpd, .m3u8, .ts, .mp4).</p>
-                        <div class="url-slot-container" style="margin-bottom:0; border-color: rgba(14, 165, 233, 0.5);">
-                            <input type="text" id="single-url-input" placeholder="https://domain.com/stream.mpd">
-                            <button class="btn-slot" style="background: var(--accent); color: white;" onclick="playSingleStream()">Putar</button>
-                        </div>
-                    </div>
-
-                    <div class="admin-section" style="border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.05);">
-                        <label style="color: #10b981;">4. Web M3U8 Sniffer (Extractor)</label>
-                        <p style="font-size:11px; color:var(--text-muted); margin-bottom:15px; line-height: 1.5;">Masukkan URL website streaming. Sistem akan mengunduh source code dan mengekstrak link .m3u8 yang tersembunyi secara otomatis tanpa membebani browser.</p>
-                        <div class="url-slot-container" style="margin-bottom:0; border-color: rgba(16, 185, 129, 0.5);">
-                            <input type="text" id="sniffer-url-input" placeholder="https://website-streaming.com/nonton">
-                            <button class="btn-slot" id="btn-sniff" style="background: #10b981; color: white;" onclick="sniffUrl()">🔍 Sniff</button>
+                        <label style="color: var(--accent);">2. TAMBAH VIA URL / AUTO-SNIFFER</label>
+                        <p style="font-size:11px; color:var(--text-muted); margin-bottom:15px; line-height: 1.5;">Masukkan link M3U atau Website biasa. Jika berisi M3U akan dimuat, jika berupa Web, sistem akan otomatis melakukan Sniffing (Cari stream M3U8 tersembunyi).</p>
+                        
+                        <div class="url-slot-container" style="margin-bottom: 0;">
+                            <input type="text" id="url-input-1" placeholder="https://iptv-org.github.io/iptv/index.m3u">
+                            <button class="btn-slot" onclick="loadSmartUrl()">MUAT</button>
                         </div>
                     </div>
 
                     <div class="admin-section">
-                        <label>5. Ekspor Master Playlist</label>
+                        <label>3. Putar URL Channel Tunggal</label>
+                        <p style="font-size:11px; color:var(--text-muted); margin-bottom:15px; line-height: 1.5;">Masukkan link video satuan (.mpd, .m3u8, .ts, .mp4).</p>
+                        <div class="url-slot-container" style="margin-bottom:0;">
+                            <input type="text" id="single-url-input" placeholder="http://88.212.15.19/live/test.m3u8">
+                            <button class="btn-slot" onclick="playSingleStream()">Putar</button>
+                        </div>
+                    </div>
+
+                    <div class="admin-section">
+                        <label>4. Ekspor Master Playlist</label>
                         <p style="font-size:11px; color:var(--text-muted); margin-bottom:15px; line-height: 1.5;">Unduh gabungan daftar saluran yang lancar ke format .m3u asli tanpa duplikat.</p>
                         <button class="btn-action" style="background:var(--glass-bg); border: 1px solid var(--glass-border);" onclick="exportActivePlaylist()">Simpan M3U</button>
                     </div>
 
                     <div class="admin-section" style="border-color: rgba(220, 38, 38, 0.3); background: rgba(220, 38, 38, 0.05);">
-                        <label style="color: #f87171;">6. Reset Total</label>
+                        <label style="color: #f87171;">5. Reset Total</label>
                         <button class="btn-action" style="background:#ef4444;" onclick="resetCache()">Hapus Semua Daftar & Cache</button>
                     </div>
                 </div>
@@ -353,7 +336,6 @@
     </div>
 
     <script>
-        // Menggunakan "var" di level global untuk mencegah error redeklarasi di CodePen
         var StorageHelper = {
             get: function(key) {
                 try { return localStorage.getItem(key); } 
@@ -371,6 +353,7 @@
 
         var video = document.getElementById('video');
         var playlistDiv = document.getElementById('playlist');
+        var searchInput = document.getElementById('search-input');
         var sidebar = document.getElementById('sidebar');
         var vignette = document.getElementById('vignette-effect');
         var osdOverlay = document.getElementById('osd-overlay');
@@ -418,14 +401,48 @@
         var isIndoAudioDetected = false; 
 
         // ==========================================
-        // SMART PROXY FETCHER (Mengatasi CORS & 400 Bad Request)
-        // Ditingkatkan dengan Timeout 15s dan Anti-Cache
+        // FITUR BARU: LIVE SEARCH
+        // ==========================================
+        searchInput.addEventListener('input', function(e) {
+            var query = e.target.value.toLowerCase();
+            var groups = document.querySelectorAll('#playlist details');
+            
+            groups.forEach(group => {
+                var channels = group.querySelectorAll('.channel-btn');
+                var hasVisible = false;
+                
+                channels.forEach(btn => {
+                    // Jangan tampilkan channel yang sudah berstatus error/mati (ditandai dengan class 'is-dead')
+                    if (btn.classList.contains('is-dead')) {
+                        btn.style.display = 'none';
+                        return;
+                    }
+
+                    var name = btn.querySelector('.channel-name').innerText.toLowerCase();
+                    if (name.includes(query)) {
+                        btn.style.display = 'flex';
+                        hasVisible = true;
+                    } else {
+                        btn.style.display = 'none';
+                    }
+                });
+                
+                if (hasVisible) {
+                    group.style.display = 'block';
+                    if (query !== "") group.open = true; 
+                } else {
+                    group.style.display = 'none';
+                }
+            });
+        });
+
+        // ==========================================
+        // SMART PROXY FETCHER
         // ==========================================
         async function fetchWithProxy(targetUrl, statusElId = null) {
             var statusEl = statusElId ? document.getElementById(statusElId) : null;
             var encodedUrl = encodeURIComponent(targetUrl);
             
-            // Urutan prioritas proxy yang lebih agresif, codetabs tidak di-encode agar tidak error 400
             var proxies = [
                 { url: targetUrl, type: 'text' },
                 { url: "https://api.allorigins.win/raw?url=" + encodedUrl, type: 'text' }, 
@@ -440,7 +457,6 @@
                 }
                 
                 try {
-                    // Batasi waktu loading maksimal 15 detik per proxy
                     var controller = new AbortController();
                     var timeoutId = setTimeout(() => controller.abort(), 15000); 
 
@@ -461,8 +477,6 @@
                             textData = await res.text();
                         }
                         
-                        // Fungsi fetchWithProxy ini sekarang digunakan juga oleh Sniffer, 
-                        // jadi kita lemaskan validasinya (asal ada text yang kembali, anggap sukses)
                         if (textData && textData.trim().length > 0) {
                             if (statusEl) statusEl.innerText = "✅ Berhasil menarik data!";
                             return textData;
@@ -830,89 +844,108 @@
         });
 
         // ==========================================
-        // FUNGSI LOAD URL (MANUAL USER)
+        // SMART ERROR HANDLER & AUTO RE-SNIFFER
         // ==========================================
-        function initUrlSlots() {
-            for (var i = 1; i <= 5; i++) {
-                var savedUrl = StorageHelper.get("iptvUrlSlot" + i);
-                if (savedUrl) document.getElementById("url-input-" + i).value = savedUrl;
+        async function handleStreamError(index) {
+            var channel = flatChannelList[index];
+            
+            // Jika channel ini adalah hasil Sniffer (memiliki sourceUrl) dan belum retry berlebihan
+            if (channel.sourceUrl && (channel.sniffRetries || 0) < 2) {
+                showOSD("🔄 Memperbarui Token M3U8...", false);
+                channel.sniffRetries = (channel.sniffRetries || 0) + 1;
+                
+                try {
+                    var htmlData = await fetchWithProxy(channel.sourceUrl);
+                    var regex = /https?:\/\/[^\s"'<>|]+\.m3u8[^\s"'<>|]*/gi;
+                    var matches = htmlData.match(regex);
+                    
+                    if (matches && matches.length > 0) {
+                        var newUrl = matches[0]; 
+                        if (newUrl !== channel.url) {
+                            channel.url = newUrl;
+                            showOSD("✅ Token Diperbarui! Melanjutkan...", false);
+                            
+                            if (statusCache[channel.url]) {
+                                delete statusCache[channel.url];
+                                StorageHelper.set('iptvStatusCache', JSON.stringify(statusCache));
+                            }
+                            
+                            setTimeout(function() { playStream(index); }, 800);
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Auto-resniff gagal", e);
+                }
             }
+            
+            updateBadge(index, 'error', 0); 
+            autoSkipToNext();
         }
 
-        async function processM3uFetch(urlToFetch, fallbackIndexName) {
+        // ==========================================
+        // FITUR BARU: SATU SLOT SMART URL (AUTO-SNIFFER)
+        // ==========================================
+        function initUrlSlots() {
+            var savedUrl = StorageHelper.get("iptvUrlSlot1");
+            if (savedUrl) document.getElementById("url-input-1").value = savedUrl;
+        }
+
+        async function loadSmartUrl() {
+            var urlInput = document.getElementById("url-input-1");
+            var url = urlInput.value.trim();
+            
+            if (!url || !url.startsWith("http")) return alert("Silakan masukkan URL / Web yang valid.");
+            
+            StorageHelper.set("iptvUrlSlot1", url);
+            
             switchTab(1); 
-            playlistDiv.innerHTML = "<div style=\"text-align:center; padding:50px 20px; color:var(--text-muted); font-size: 14px; line-height: 1.6;\">Menarik Playlist...<br><br><span id=\"proxy-status\" style=\"font-size:12px; font-weight:800; color:var(--accent);\">Menyiapkan koneksi...</span></div>";
+            playlistDiv.innerHTML = "<div style=\"text-align:center; padding:50px 20px; color:var(--text-muted); font-size: 14px; line-height: 1.6;\">Menganalisis URL...<br><br><span id=\"proxy-status\" style=\"font-size:12px; font-weight:800; color:var(--accent);\">Menyiapkan koneksi...</span></div>";
             
             try {
-                var newTxt = await fetchWithProxy(urlToFetch, 'proxy-status');
-                
-                if (!newTxt.includes("#EXTM3U") && !newTxt.includes("#EXTINF")) {
-                    throw new Error("File bukan format M3U yang valid.");
+                var textData = await fetchWithProxy(url, 'proxy-status');
+                var newM3uEntries = "";
+
+                // Cek apakah file ini adalah m3u tulen
+                if (textData.includes("#EXTM3U") || textData.includes("#EXTINF")) {
+                    newM3uEntries = textData;
+                } else {
+                    // Jika bukan M3U, anggap ini website. Jalankan extractor!
+                    var regex = /https?:\/\/[^\s"'<>|]+\.m3u8[^\s"'<>|]*/gi;
+                    var matches = textData.match(regex);
+                    
+                    if (matches && matches.length > 0) {
+                        var uniqueUrls = Array.from(new Set(matches));
+                        var maxLinks = Math.min(uniqueUrls.length, 3); // Batasi maks 3 stream
+                        
+                        for (var i = 0; i < maxLinks; i++) {
+                            var streamUrl = uniqueUrls[i];
+                            var hostName = "Unknown Host";
+                            try {
+                                var urlObj = new URL(streamUrl);
+                                hostName = urlObj.hostname;
+                            } catch(e) {}
+                            
+                            // Suntikkan source web agar fitur background auto-resniff berfungsi saat token mati
+                            newM3uEntries += "\n#EXTINF:-1 group-title=\"Hasil Auto-Sniff\" x-source-url=\"" + url + "\", [Sniff] " + hostName + " (" + (i+1) + ")\n" + streamUrl;
+                        }
+                        showOSD("✅ Auto-Sniff berhasil menemukan " + maxLinks + " stream!");
+                    } else {
+                        throw new Error("Bukan file M3U dan tidak ada stream M3U8 tersembunyi yang ditemukan di web ini.");
+                    }
                 }
 
                 var existingTxt = StorageHelper.get('savedIPTV') || '';
-                var combinedTxt = existingTxt + '\n' + newTxt;
+                var combinedTxt = existingTxt + '\n' + newM3uEntries;
                 
                 StorageHelper.set('savedIPTV', combinedTxt); 
                 renderPlaylist(combinedTxt);
+                urlInput.value = "";
             } catch (e) { 
                 switchTab(2); 
-                alert("Gagal memuat Data dari " + fallbackIndexName + ".\n\nAlasan: " + e.message); 
-                playlistDiv.innerHTML = "<div style=\"padding: 50px 20px; text-align: center; color: var(--text-muted); font-size: 14px; line-height: 1.6;\">Belum ada siaran.<br><br>Buka tab <b>Pengaturan</b> untuk memuat Playlist.</div>";
+                alert("Gagal memuat Data.\n\nAlasan: " + e.message); 
+                renderPlaylist(StorageHelper.get('savedIPTV') || ''); // Kembalikan ke list sebelumnya
             }
-        }
-
-        function loadUrlSlot(slotIndex) {
-            var urlInput = document.getElementById("url-input-" + slotIndex);
-            var url = urlInput.value.trim();
-            if (!url) return alert("Silakan masukkan URL pada Slot " + slotIndex);
-            StorageHelper.set("iptvUrlSlot" + slotIndex, url);
-            processM3uFetch(url, "Slot " + slotIndex);
-        }
-
-        async function loadAllUrlSlots() {
-            var urlsToLoad = [];
-            for (var i = 1; i <= 5; i++) {
-                var urlInput = document.getElementById("url-input-" + i);
-                var url = urlInput.value.trim();
-                if (url) {
-                    StorageHelper.set("iptvUrlSlot" + i, url);
-                    urlsToLoad.push(url);
-                }
-            }
-            
-            if (urlsToLoad.length === 0) return alert("Silakan isi minimal satu Slot URL.");
-
-            switchTab(1);
-            playlistDiv.innerHTML = "<div style=\"text-align:center; padding:50px 20px; color:var(--text-muted); font-size: 14px; line-height: 1.6;\">Menarik " + urlsToLoad.length + " Playlist Sekaligus...<br><br><span id=\"proxy-status\" style=\"font-size:12px; font-weight:800; color:var(--accent);\">Menyiapkan koneksi...</span></div>";
-
-            var combinedNewTxt = "";
-            var successCount = 0;
-
-            await Promise.all(urlsToLoad.map(async (urlFetch) => {
-                try {
-                    var textData = await fetchWithProxy(urlFetch);
-                    if (textData.includes("#EXTM3U") || textData.includes("#EXTINF")) {
-                        combinedNewTxt += "\n" + textData;
-                        successCount++;
-                    }
-                } catch(err) {
-                    // Silently fail for individual slots if loading all at once
-                }
-            }));
-
-            if (successCount === 0) {
-                switchTab(2); 
-                alert("Gagal memuat semua URL.\n\nSistem diblokir oleh CORS atau isi tidak memiliki format M3U."); 
-                playlistDiv.innerHTML = "<div style=\"padding: 50px 20px; text-align: center; color: var(--text-muted); font-size: 14px; line-height: 1.6;\">Belum ada siaran.<br><br>Buka tab <b>Pengaturan</b> untuk memuat Playlist.</div>";
-                return;
-            }
-            
-            var existingTxt = StorageHelper.get('savedIPTV') || '';
-            var finalTxt = existingTxt + '\n' + combinedNewTxt;
-            
-            StorageHelper.set('savedIPTV', finalTxt); 
-            renderPlaylist(finalTxt);
         }
 
         function playSingleStream() {
@@ -939,64 +972,6 @@
             urlInput.value = ""; 
         }
 
-        // ==========================================
-        // FITUR BARU: M3U8 WEB SNIFFER (REGEX EXTRACTOR)
-        // ==========================================
-        async function sniffUrl() {
-            var urlInput = document.getElementById("sniffer-url-input");
-            var btn = document.getElementById("btn-sniff");
-            var targetUrl = urlInput.value.trim();
-            
-            if (!targetUrl || !targetUrl.startsWith("http")) return alert("Masukkan URL website yang valid (http/https).");
-            
-            btn.innerText = "⏳ Sniffing...";
-            btn.disabled = true;
-
-            try {
-                // Menarik raw source code dari website target menggunakan proxy CORS
-                var htmlData = await fetchWithProxy(targetUrl);
-                
-                // Regex super cepat untuk menangkap URL HTTP/HTTPS berakhiran .m3u8 
-                // Regex ini akan mengambil URL penuh termasuk query string (token) jika ada
-                var regex = /https?:\/\/[^\s"'<>|]+\.m3u8[^\s"'<>|]*/gi;
-                var matches = htmlData.match(regex);
-                
-                if (matches && matches.length > 0) {
-                    // Menggunakan Set untuk membuang URL m3u8 yang duplikat (sama persis)
-                    var uniqueUrls = Array.from(new Set(matches));
-                    var newM3uEntries = "";
-                    
-                    for (var i = 0; i < uniqueUrls.length; i++) {
-                        var streamUrl = uniqueUrls[i];
-                        var hostName = "Unknown Host";
-                        try {
-                            var urlObj = new URL(streamUrl);
-                            hostName = urlObj.hostname;
-                        } catch(e) {}
-                        
-                        // Menambahkan hasil sniff sebagai list M3U buatan
-                        newM3uEntries += "\n#EXTINF:-1 group-title=\"M3U8 Sniffed\", [Sniff] " + hostName + " " + (i+1) + "\n" + streamUrl;
-                    }
-                    
-                    var existingTxt = StorageHelper.get('savedIPTV') || '';
-                    var combinedTxt = existingTxt + newM3uEntries;
-                    StorageHelper.set('savedIPTV', combinedTxt);
-                    renderPlaylist(combinedTxt);
-                    
-                    alert("✅ Berhasil menemukan " + uniqueUrls.length + " link M3U8!");
-                    switchTab(1); // Otomatis pindah ke tab Live TV untuk melihat hasil
-                    urlInput.value = "";
-                } else {
-                    alert("Tidak ditemukan link M3U8 pada halaman tersebut.\nMungkin link di-obfuscate (disembunyikan oleh JavaScript enkripsi).");
-                }
-            } catch (e) {
-                alert("Gagal mengakses web target.\nAlasan: " + e.message);
-            } finally {
-                btn.innerText = "🔍 Sniff";
-                btn.disabled = false;
-            }
-        }
-
         document.getElementById('file-upload').addEventListener('change', e => {
             var f = e.target.files[0]; if (!f) return; var r = new FileReader();
             r.onload = ev => { 
@@ -1009,7 +984,7 @@
         });
 
         // ==========================================
-        // MULTI-ENGINE PLAYER ROUTER
+        // MULTI-ENGINE PLAYER ROUTER DENGAN PROXY INTERCEPTOR
         // ==========================================
         function playStream(index) {
             if (index < 0 || index >= flatChannelList.length || flatChannelList[index].isDead) return;
@@ -1026,7 +1001,14 @@
 
             if (window.innerWidth <= 768) { sidebar.classList.add('hidden'); }
 
-            showOSD("📺 " + channel.name);
+            // DETEKSI MIXED CONTENT: Beri peringatan OSD jika rute proxy aktif
+            var isMixedContent = window.location.protocol === 'https:' && channel.url.startsWith('http://');
+            if (isMixedContent) {
+                showOSD("📺 " + channel.name + " <br><span style='font-size:11px; color:#fef08a;'>⚠️ Rute Proxy Aktif (Bisa Buffering)</span>");
+            } else {
+                showOSD("📺 " + channel.name);
+            }
+            
             var cachedStrength = statusCache[channel.url] && statusCache[channel.url].strength ? statusCache[channel.url].strength : 100;
             updateBadge(index, 'active', cachedStrength); 
 
@@ -1048,8 +1030,28 @@
 
             if (isM3U8) {
                 if (Hls.isSupported()) {
-                    hls = new Hls({ debug: false, enableWorker: true });
-                    hls.loadSource(channel.url); hls.attachMedia(video);
+                    hls = new Hls({ 
+                        debug: false, 
+                        enableWorker: true,
+                        lowLatencyMode: true,
+                        manifestLoadingMaxRetry: 2,
+                        // TRICK: Paksa jalur XHR melewati proxy jika terdeteksi Mixed Content (HTTP di HTTPS)
+                        xhrSetup: function(xhr, url) {
+                            if (window.location.protocol === 'https:' && url.startsWith('http://')) {
+                                url = 'https://corsproxy.io/?' + encodeURIComponent(url);
+                            }
+                            xhr.open('GET', url, true);
+                        }
+                    });
+                    
+                    var streamUrlToLoad = channel.url;
+                    // Siasat awal, jika URL root M3U8 juga HTTP, paksa via proxy sebelum masuk ke Hls.loadSource
+                    if (isMixedContent) {
+                        streamUrlToLoad = 'https://corsproxy.io/?' + encodeURIComponent(channel.url);
+                    }
+
+                    hls.loadSource(streamUrlToLoad); 
+                    hls.attachMedia(video);
                     
                     hls.on(Hls.Events.MANIFEST_PARSED, function () {
                         video.play().catch(e => console.log("Autoplay ditahan browser"));
@@ -1098,29 +1100,35 @@
                     hls.on(Hls.Events.ERROR, function (event, data) {
                         if (data.fatal) {
                             if (data.type === Hls.ErrorTypes.NETWORK_ERROR || data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-                                hls.destroy(); updateBadge(index, 'error', 0); autoSkipToNext(); 
+                                hls.destroy(); hls = null; 
+                                handleStreamError(index); // Panggil fungsi pintar kita
                             }
                         }
                     });
                 } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                    video.src = channel.url; 
+                    // Fallback untuk Safari Native
+                    var safeUrl = channel.url;
+                    if (isMixedContent) safeUrl = 'https://corsproxy.io/?' + encodeURIComponent(safeUrl);
+                    
+                    video.src = safeUrl; 
                     video.addEventListener('loadedmetadata', () => { video.play(); startPreTranslateScanner(); });
-                    video.onerror = () => { updateBadge(index, 'error', 0); autoSkipToNext(); };
+                    video.onerror = () => { handleStreamError(index); };
                 }
             } 
             else if (isMPD) {
                 if (typeof dashjs !== 'undefined') {
                     dashPlayer = dashjs.MediaPlayer().create();
+                    // Interceptor untuk DashJS belum diterapkan secara default, gunakan URL asal
                     dashPlayer.initialize(video, channel.url, true);
                     dashPlayer.on(dashjs.MediaPlayer.events.PLAYBACK_STARTED, () => {
                         startPreTranslateScanner();
                     });
                     dashPlayer.on(dashjs.MediaPlayer.events.ERROR, () => {
-                        updateBadge(index, 'error', 0); autoSkipToNext();
+                        handleStreamError(index);
                     });
                 } else {
                     video.src = channel.url;
-                    video.play().then(() => startPreTranslateScanner()).catch(e => { updateBadge(index, 'error', 0); autoSkipToNext(); });
+                    video.play().then(() => startPreTranslateScanner()).catch(e => { handleStreamError(index); });
                 }
             }
             else if (isTS) {
@@ -1137,16 +1145,16 @@
                     }).catch(e => console.log("Autoplay ditahan browser"));
 
                     tsPlayer.on(mpegts.Events.ERROR, function (event, data) {
-                        updateBadge(index, 'error', 0); autoSkipToNext();
+                        handleStreamError(index);
                     });
                 } else {
                     video.src = channel.url;
-                    video.play().then(() => startPreTranslateScanner()).catch(e => { updateBadge(index, 'error', 0); autoSkipToNext(); });
+                    video.play().then(() => startPreTranslateScanner()).catch(e => { handleStreamError(index); });
                 }
             } 
             else {
                 video.src = channel.url;
-                video.play().then(() => startPreTranslateScanner()).catch(e => { updateBadge(index, 'error', 0); autoSkipToNext(); });
+                video.play().then(() => startPreTranslateScanner()).catch(e => { handleStreamError(index); });
             }
         }
 
@@ -1176,10 +1184,12 @@
                 badgeContainer.innerHTML = getSignalBarHTML(strength);
                 saveStatusCache(flatChannelList[index].url, 'active', strength); 
                 flatChannelList[index].isDead = false;
+                if(btn) { btn.classList.remove('is-dead'); btn.style.display = 'flex'; }
             } else if (status === 'error') { 
                 saveStatusCache(flatChannelList[index].url, 'error', 0); 
                 flatChannelList[index].isDead = true;
                 if (btn) {
+                    btn.classList.add('is-dead');
                     btn.style.display = 'none';
                     var details = btn.closest('details');
                     if (details) {
@@ -1262,7 +1272,13 @@
                 var controller = new AbortController();
                 var timeoutId = setTimeout(() => controller.abort(), 2500); 
                 
-                var response = await fetch(channel.url, { 
+                // Cek stream status secara cepat
+                var checkUrl = channel.url;
+                if (window.location.protocol === 'https:' && checkUrl.startsWith('http://')) {
+                    checkUrl = 'https://corsproxy.io/?' + encodeURIComponent(checkUrl);
+                }
+
+                var response = await fetch(checkUrl, { 
                     method: 'GET', 
                     mode: 'no-cors',
                     cache: 'no-cache',
@@ -1284,7 +1300,7 @@
             } catch (error) { 
                 updateBadge(index, 'error', 0); 
                 if (currentChannelIndex === index) {
-                    autoSkipToNext();
+                    // Biarkan Player Router yang handle auto-resniff/skip
                 }
             }
         }
@@ -1292,6 +1308,7 @@
         function renderPlaylist(userSavedData) {
             playlistDiv.innerHTML = ''; flatChannelList = []; currentChannelIndex = -1;
             isCheckingBackground = false; checkQueue = []; checkStatusBar.style.display = 'none';
+            if (searchInput) searchInput.value = ''; // Reset form pencarian saat render baru
 
             var combinedData = backgroundAutoTxt + "\n" + (userSavedData || "");
             var lines = combinedData.split('\n'); 
@@ -1309,11 +1326,16 @@
                     if (tLine.toUpperCase().startsWith('#EXTINF')) {
                         cur.name = tLine.substring(tLine.lastIndexOf(',') + 1).trim() || 'Unknown';
                         
+                        // PARSER BARU: Regex lebih kokoh yang tahan terhadap spasi yang dihilangkan
                         var logo = tLine.match(/(?:tvg-logo|logo)="([^"]+)"/i); 
                         cur.logo = logo ? logo[1] : null;
                         
                         var group = tLine.match(/(?:group-title|group)="([^"]+)"/i); 
                         cur.group = (group && group[1] && group[1].trim() !== '') ? group[1].trim() : 'Lainnya';
+                        
+                        var srcUrl = tLine.match(/x-source-url="([^"]+)"/i);
+                        cur.sourceUrl = srcUrl ? srcUrl[1] : null;
+
                     } else if (tLine.toUpperCase().startsWith('#EXTGRP:')) {
                         if (!cur.group || cur.group === 'Lainnya') cur.group = tLine.substring(8).trim();
                     }
@@ -1368,7 +1390,10 @@
                     
                     var btn = document.createElement('button');
                     btn.className = 'channel-btn'; btn.id = "chan-" + gIndex;
-                    if (isDead) btn.style.display = 'none'; 
+                    if (isDead) {
+                        btn.classList.add('is-dead'); 
+                        btn.style.display = 'none'; 
+                    }
                     
                     var logoHTML = c.logo ? "<img src=\"" + c.logo + "\" class=\"channel-logo\" loading=\"lazy\" onerror=\"this.outerHTML='<div class=\\'no-logo\\'>TV</div>'\">" : "<div class=\"no-logo\">TV</div>";
                     btn.innerHTML = logoHTML + " <span class=\"channel-name\">" + c.name + "</span> <div id=\"badge-container-" + gIndex + "\" style=\"margin-left: auto;\">" + badgeHTML + "</div>";
